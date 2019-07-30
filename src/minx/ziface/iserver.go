@@ -6,6 +6,6 @@ type IServer interface {
 	// 停止
 	Stop()
 	// 服务
-	Server()
+	Serve()
 }
 

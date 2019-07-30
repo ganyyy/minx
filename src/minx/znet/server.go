@@ -2,6 +2,7 @@ package znet
 
 import (
 	"../ziface"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -13,6 +14,18 @@ type Server struct {
 	IP        string // IP地址
 	Port      int    // 端口号
 }
+
+
+// CallbackToClient 客户端的HandleAPI
+func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+	fmt.Println("[Conn Handle] CallbackToClient ...")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("Write Error")
+		return errors.New("CallBackToClient Error")
+	}
+	return nil
+}
+
 
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listener at IP:%s, Port:%d, is starting.\n", s.IP, s.Port)
@@ -36,6 +49,9 @@ func (s *Server) Start() {
 		// 监听成功
 		fmt.Println("start zinx Server", s.Name, " success listening")
 
+		// 客户端Id
+		var cid uint32 = 0
+
 		// 3.循环监听新链接
 		for {
 			// 3.1接受一个套接字
@@ -45,26 +61,17 @@ func (s *Server) Start() {
 				continue
 			}
 
+
 			// 3.2 TODO 最大连接数
 			// 3.3 TODO 新链接的业务请求
 
-			// 暂时做一个512字节内的回显服务
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					// 读取
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("Read err:", err)
-						continue
-					}
-					// 回复
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("write back err:", err)
-						continue
-					}
-				}
-			}()
+			// 生成一个新的客户端连接
+			dealConn := NewConnection(conn, cid, CallbackToClient)
+			// id ++
+			cid ++
+			// 3.4 启动客户端业务
+			go dealConn.Start()
+
 		}
 	}()
 }
@@ -75,7 +82,7 @@ func (s *Server) Stop() {
 	// TODO 关闭后的清理
 }
 
-func (s *Server) Server() {
+func (s *Server) Serve() {
 	s.Start()
 
 	// TODO 启动服务时的各种初始化
