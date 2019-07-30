@@ -1,14 +1,16 @@
 package znet
 
 import (
-	"../utils"
-	"../ziface"
 	"errors"
 	"fmt"
 	"net"
 	"time"
+
+	"../utils"
+	"../ziface"
 )
 
+// Server 服务器基础机构
 type Server struct {
 	Name      string         // 服务器名
 	IPVersion string         // tcp4 or other
@@ -27,6 +29,7 @@ func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 	return nil
 }
 
+// Start 开启服务器
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listener at IP:%s, Port:%d, is starting.\n", s.IP, s.Port)
 	fmt.Printf("[Zinx] Version:%s, MaxConn:%d, MaxPacketSize:%d",
@@ -54,7 +57,7 @@ func (s *Server) Start() {
 		fmt.Println("start zinx Server", s.Name, " success listening")
 
 		// 客户端Id
-		var cid uint32 = 0
+		var cid uint32
 
 		// 3.循环监听新链接
 		for {
@@ -79,12 +82,14 @@ func (s *Server) Start() {
 	}()
 }
 
+// Stop 停止服务器
 func (s *Server) Stop() {
 	fmt.Println("[STOP] Zinx server :", s.Name, " stop")
 
 	// TODO 关闭后的清理
 }
 
+// Serve 运行服务
 func (s *Server) Serve() {
 	s.Start()
 
@@ -96,11 +101,13 @@ func (s *Server) Serve() {
 	}
 }
 
+// AddRouter 添加路由
 func (s *Server) AddRouter(router ziface.IRouter) {
 	s.Router = router
 	fmt.Println("Add router success!")
 }
 
+// NewServer 返回新的服务器
 func NewServer(name string) ziface.IServer {
 
 	conf := utils.GlobalObject

@@ -1,9 +1,10 @@
 package znet
 
 import (
-	"../ziface"
 	"fmt"
 	"net"
+
+	"../ziface"
 )
 
 //Connection 客户端连接结构
@@ -79,7 +80,7 @@ func (c *Connection) GetConnID() uint32 {
 	return c.ConnID
 }
 
-// RemoteAttr 获取连接地址
+// RemoteAddr 获取连接地址
 func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
