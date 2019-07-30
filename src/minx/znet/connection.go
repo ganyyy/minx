@@ -70,7 +70,7 @@ func (c *Connection) Stop() {
 }
 
 // GetTCPConnection 获取连接套接字
-func (c *Connection) GetTCPConnection() net.Conn {
+func (c *Connection) GetTCPConnection() *net.TCPConn {
 	return c.Conn
 }
 
@@ -80,7 +80,7 @@ func (c *Connection) GetConnID() uint32 {
 }
 
 // RemoteAttr 获取连接地址
-func (c *Connection) RemoteAttr() net.Addr {
+func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
@@ -89,7 +89,7 @@ func (c *Connection) StartReader() {
 	fmt.Println("Reader Goroutine is running")
 
 	// 收尾
-	defer fmt.Println(c.RemoteAttr().String(), " conn reader exit")
+	defer fmt.Println(c.RemoteAddr().String(), " conn reader exit")
 	defer c.Stop()
 
 	// 死循环读线程
