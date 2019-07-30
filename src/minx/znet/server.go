@@ -9,12 +9,12 @@ import (
 )
 
 type Server struct {
-	Name      string // 服务器名
-	IPVersion string // tcp4 or other
-	IP        string // IP地址
-	Port      int    // 端口号
+	Name      string         // 服务器名
+	IPVersion string         // tcp4 or other
+	IP        string         // IP地址
+	Port      int            // 端口号
+	Router    ziface.IRouter // 路由
 }
-
 
 // CallbackToClient 客户端的HandleAPI
 func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
@@ -25,7 +25,6 @@ func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 	}
 	return nil
 }
-
 
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listener at IP:%s, Port:%d, is starting.\n", s.IP, s.Port)
@@ -61,14 +60,13 @@ func (s *Server) Start() {
 				continue
 			}
 
-
 			// 3.2 TODO 最大连接数
 			// 3.3 TODO 新链接的业务请求
 
 			// 生成一个新的客户端连接
-			dealConn := NewConnection(conn, cid, CallbackToClient)
-			// id ++
-			cid ++
+			dealConn := NewConnection(conn, cid, s.Router)
+			// id ++, TODO 自定义的连接生成方法
+			cid++
 			// 3.4 启动客户端业务
 			go dealConn.Start()
 
@@ -93,12 +91,18 @@ func (s *Server) Serve() {
 	}
 }
 
-func NewServer(name string) ziface.IServer{
+func (s *Server) AddRouter(router ziface.IRouter) {
+	s.Router = router
+	fmt.Println("Add router success!")
+}
+
+func NewServer(name string) ziface.IServer {
 	s := &Server{
-		Name:name,
-		IPVersion:"tcp4",
-		IP:"127.0.0.1",
-		Port:7777,
+		Name:      name,
+		IPVersion: "tcp4",
+		IP:        "127.0.0.1",
+		Port:      7777,
+		Router:    nil,
 	}
 
 	return s

@@ -17,21 +17,21 @@ type Connection struct {
 	// 是否已关闭
 	isClose bool
 
-	// 连接处理方法
-	handleAPI ziface.HandFun
-
 	// 退出消息通知chan
 	ExitBuffChan chan bool
+
+	// 处理路由
+	Router ziface.IRouter
 }
 
 // NewConnection 返回一个新的客户端连接结构体
-func NewConnection(conn *net.TCPConn, connID uint32, callbackApi ziface.HandFun) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, router ziface.IRouter) *Connection {
 	c := &Connection{
 		Conn:         conn,
 		ConnID:       connID,
-		handleAPI:    callbackApi,
 		isClose:      false,
 		ExitBuffChan: make(chan bool, 1),
+		Router:       router,
 	}
 	return c
 }
@@ -95,18 +95,25 @@ func (c *Connection) StartReader() {
 	// 死循环读线程
 	for {
 		buf := make([]byte, 512)
-		cnt, err := c.Conn.Read(buf)
+		_, err := c.Conn.Read(buf)
 		// 如果读出错
 		if err != nil {
 			fmt.Println("Reader Error:", err)
 			return
 		}
 
-		// 如果处理出错
-		if err := c.handleAPI(c.Conn, buf, cnt); err != nil {
-			fmt.Println("Handle Error:", err)
-			return
+		// 将当前连接包装成一个Request
+		req := Request{
+			conn: c,
+			data: buf,
 		}
+
+		// 使用路由处理请求
+		go func(request ziface.IRequest) {
+			c.Router.PreHandle(request)
+			c.Router.Handle(request)
+			c.Router.PostHandle(request)
+		}(&req)
 	}
 
 }
