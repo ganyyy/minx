@@ -117,7 +117,7 @@ func NewServer(name string) ziface.IServer {
 		Name:      conf.Name,
 		IPVersion: "tcp4",
 		IP:        conf.Host,
-		Port:      conf.TcpPort,
+		Port:      conf.TCPPort,
 		Router:    nil,
 	}
 
