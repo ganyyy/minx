@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"../utils"
 	"../ziface"
 	"errors"
 	"fmt"
@@ -28,6 +29,10 @@ func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listener at IP:%s, Port:%d, is starting.\n", s.IP, s.Port)
+	fmt.Printf("[Zinx] Version:%s, MaxConn:%d, MaxPacketSize:%d",
+		utils.GlobalObject.Version,
+		utils.GlobalObject.MaxConn,
+		utils.GlobalObject.MaxPacketSize)
 
 	// 开一个服务去监听
 	go func() {
@@ -97,11 +102,15 @@ func (s *Server) AddRouter(router ziface.IRouter) {
 }
 
 func NewServer(name string) ziface.IServer {
+
+	conf := utils.GlobalObject
+	conf.Reload()
+
 	s := &Server{
-		Name:      name,
+		Name:      conf.Name,
 		IPVersion: "tcp4",
-		IP:        "127.0.0.1",
-		Port:      7777,
+		IP:        conf.Host,
+		Port:      conf.TcpPort,
 		Router:    nil,
 	}
 
