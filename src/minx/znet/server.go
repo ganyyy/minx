@@ -32,7 +32,7 @@ func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 // Start 开启服务器
 func (s *Server) Start() {
 	fmt.Printf("[START] Server listener at IP:%s, Port:%d, is starting.\n", s.IP, s.Port)
-	fmt.Printf("[Zinx] Version:%s, MaxConn:%d, MaxPacketSize:%d",
+	fmt.Printf("[Zinx] Version:%s, MaxConn:%d, MaxPacketSize:%d\n",
 		utils.GlobalObject.Version,
 		utils.GlobalObject.MaxConn,
 		utils.GlobalObject.MaxPacketSize)
@@ -54,7 +54,7 @@ func (s *Server) Start() {
 		}
 
 		// 监听成功
-		fmt.Println("start zinx Server", s.Name, " success listening")
+		fmt.Println("start Server", s.Name, " success listening")
 
 		// 客户端Id
 		var cid uint32

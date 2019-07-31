@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
 	"../ziface"
+	"encoding/json"
+	"io/ioutil"
+	"os"
+	"strings"
 )
 
 // GlobalObj 配置结构
@@ -21,21 +21,21 @@ type GlobalObj struct {
 
 // Reload 载入配置文件
 func (g *GlobalObj) Reload() {
-	// 读取配置文件
-	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	fmt.Println(dir)
-	return
-	// file := "conf/zinx.json"
-	// data, err := ioutil.ReadFile(file)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	root := os.Getenv("ZINX_ROOT_PATH")
+	if len(strings.TrimSpace(root)) == 0 {
+		panic("error root path")
+	}
+	file := "conf/zinx.json"
+	data, err := ioutil.ReadFile(root + "/" +file)
+	if err != nil {
+		panic(err)
+	}
 
-	// // 配置文件转对象
-	// err = json.Unmarshal(data, &GlobalObject)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// 配置文件转对象
+	err = json.Unmarshal(data, &GlobalObject)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // GlobalObject 全局配置文件
