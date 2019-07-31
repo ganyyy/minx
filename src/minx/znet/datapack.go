@@ -1,11 +1,11 @@
 package znet
 
 import (
+	"../utils"
 	"../ziface"
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"zinx/utils"
 )
 
 // DataPack 拆包封包结构

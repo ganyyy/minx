@@ -46,12 +46,21 @@ func main()  {
 					// 这是啥用法？
 					// 类型断言, A.(T)
 					// A只能是接口, T可以是接口也可以是类型
-					msg, err := msgHead.(*znet.Message)
-					if !err {
+					msg, safe := msgHead.(*znet.Message)
+					if !safe {
 						fmt.Println("Error Message type")
 						return
 					}
 					msg.Data = make([]byte, msgHead.GetDataLen())
+
+					// 读取指定长度的包
+					_, err = io.ReadFull(conn, msg.Data)
+					if err != nil {
+						fmt.Println("server unpack error:", err)
+						return
+					}
+
+					fmt.Println("Recv Msg: ID =", msg.GetMsgId(), ", len =", msg.GetDataLen(), ",data =", string(msg.GetData()))
 				}
 
 			}
