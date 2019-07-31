@@ -18,6 +18,9 @@ type IConnection interface {
 
 	// 获取远端地址
 	RemoteAddr() net.Addr
+
+	// 将数据发送给客户端
+	SendMsg(uint32, []byte) error
 }
 
 // HandFun 统一的客户端处理函数接口

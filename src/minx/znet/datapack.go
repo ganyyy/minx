@@ -68,7 +68,14 @@ func (db *DataPack) Unpack(data []byte) (ziface.IMessage, error) {
 	return msg, nil
 }
 
+// 全局一个解包对象应该够了吧。。
+var dp *DataPack
+
+func init() {
+	dp = &DataPack{}
+}
+
 // NewDatePack 获取一个新的拆封包结构
 func NewDataPack() *DataPack {
-	return &DataPack{}
+	return dp
 }

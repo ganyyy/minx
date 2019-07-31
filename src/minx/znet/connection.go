@@ -2,6 +2,8 @@ package znet
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
+	"io"
 	"net"
 
 	"../ziface"
@@ -85,28 +87,83 @@ func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
+// SendMsg 发送给客户端消息
+func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+	if c.isClose {
+		return errors.New("Connection is close")
+	}
+
+	dp := NewDataPack()
+
+	// 包装
+	msg, err := dp.Pack(NewMessage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack msg err, id:", msgId)
+		return errors.New("Pack message error ")
+	}
+
+	// 写回客户端
+	if _, err := c.Conn.Write(msg); err != nil {
+		fmt.Println("write msg id:", msgId, " error")
+		return errors.New("conn write error")
+	}
+
+	// 没错
+	return nil
+}
+
 // StartReader 读线程
 func (c *Connection) StartReader() {
 	fmt.Println("Reader Goroutine is running")
 
-	// 收尾
-	defer fmt.Println(c.RemoteAddr().String(), " conn reader exit")
-	defer c.Stop()
+	// 收尾工作
+	defer func() {
+		err := recover()
+		if err != nil {
+			fmt.Println("conn error:", err)
+		}
+		fmt.Println(c.RemoteAddr().String(), " conn reader exit")
+		c.Stop()
+	}()
+
+	// 声明一个解包对象
+	dp := NewDataPack()
+
+	// 头部数据
+	headData := make([]byte, dp.GetHeadLen())
 
 	// 死循环读线程
 	for {
-		buf := make([]byte, 512)
-		_, err := c.Conn.Read(buf)
-		// 如果读出错
-		if err != nil {
-			fmt.Println("Reader Error:", err)
+
+		// 读头
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
+			fmt.Println("client read data head err:", err)
 			return
 		}
+
+		// 解头
+		msg, err := dp.Unpack(headData)
+		if err != nil {
+			fmt.Println("client unpack head data err:", err)
+			return
+		}
+
+		// 获取实际数据
+		var data []byte
+		if msg.GetDataLen() > 0 {
+			data = make([]byte, msg.GetDataLen())
+			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
+				fmt.Println("client read data err:", err)
+			}
+		}
+
+		// 放入数据
+		msg.SetData(data)
 
 		// 将当前连接包装成一个Request
 		req := Request{
 			conn: c,
-			data: buf,
+			data: msg,
 		}
 
 		// 使用路由处理请求
