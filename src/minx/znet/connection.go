@@ -25,6 +25,9 @@ type Connection struct {
 
 	// 处理路由管理
 	msgHandle ziface.IMsgHandle
+
+	// 读写管道, 无缓冲
+	msgChan chan []byte
 }
 
 // NewConnection 返回一个新的客户端连接结构体
@@ -35,22 +38,20 @@ func NewConnection(conn *net.TCPConn, connID uint32, mh ziface.IMsgHandle) *Conn
 		isClose:      false,
 		ExitBuffChan: make(chan bool, 1),
 		msgHandle:    mh,
+		msgChan:      make(chan []byte),
 	}
 	return c
 }
 
 // Start 启动
 func (c *Connection) Start() {
-	// 开启读业务请求
-	go c.StartReader()
+	// 开启读业务
+	go c.StartRead()
 
-	for {
-		select {
-		case <-c.ExitBuffChan:
-			// 等待管道输入, 然后结束处理
-			return
-		}
-	}
+	// 开启写业务
+	go c.StartWrite()
+
+	fmt.Println("Conn Start")
 }
 
 // Stop 停止
@@ -102,18 +103,15 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 		return errors.New("Pack message error ")
 	}
 
-	// 写回客户端
-	if _, err := c.Conn.Write(msg); err != nil {
-		fmt.Println("write msg id:", msgId, " error")
-		return errors.New("conn write error ")
-	}
+	// 写回客户端, 通过管道的形式通知写
+	c.msgChan <- msg
 
 	// 没错
 	return nil
 }
 
-// StartReader 读线程
-func (c *Connection) StartReader() {
+// StartRead 读线程
+func (c *Connection) StartRead() {
 	fmt.Println("Reader Goroutine is running")
 
 	// 收尾工作
@@ -134,7 +132,10 @@ func (c *Connection) StartReader() {
 
 	// 死循环读线程
 	for {
-
+		if c.isClose {
+			// 如果出现问题并关闭, 则直接返回
+			return
+		}
 		// 读头
 		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
 			fmt.Println("client read data head err:", err)
@@ -169,5 +170,29 @@ func (c *Connection) StartReader() {
 		// 处理请求
 		go c.msgHandle.DoMsgHandle(&req)
 	}
+}
 
+// StartWrite 写线程分离
+func (c *Connection) StartWrite() {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("write error:", err)
+		}
+		fmt.Println("conn write exit")
+		c.Stop()
+	}()
+
+	for {
+		select {
+		case data := <- c.msgChan:
+			if _, err := c.Conn.Write(data); err != nil {
+				fmt.Println("client write err:", err)
+				return
+			}
+		case <-c.ExitBuffChan:
+			// 已关闭
+			fmt.Println("conn recv write exit sig")
+			return
+		}
+	}
 }
