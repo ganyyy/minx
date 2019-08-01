@@ -8,6 +8,6 @@ type IServer interface {
 	// 服务
 	Serve()
 	// 添加路由
-	AddRouter(router IRouter)
+	AddRouter(uint32, IRouter)
 }
 

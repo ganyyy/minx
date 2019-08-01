@@ -12,11 +12,11 @@ import (
 
 // Server 服务器基础机构
 type Server struct {
-	Name      string         // 服务器名
-	IPVersion string         // tcp4 or other
-	IP        string         // IP地址
-	Port      int            // 端口号
-	Router    ziface.IRouter // 路由
+	Name      string            // 服务器名
+	IPVersion string            // tcp4 or other
+	IP        string            // IP地址
+	Port      int               // 端口号
+	msgHandle ziface.IMsgHandle // 消息处理模块
 }
 
 // CallbackToClient 客户端的HandleAPI
@@ -72,7 +72,7 @@ func (s *Server) Start() {
 			// 3.3 TODO 新链接的业务请求
 
 			// 生成一个新的客户端连接
-			dealConn := NewConnection(conn, cid, s.Router)
+			dealConn := NewConnection(conn, cid, s.msgHandle)
 			// id ++, TODO 自定义的连接生成方法
 			cid++
 			// 3.4 启动客户端业务
@@ -102,9 +102,8 @@ func (s *Server) Serve() {
 }
 
 // AddRouter 添加路由
-func (s *Server) AddRouter(router ziface.IRouter) {
-	s.Router = router
-	fmt.Println("Add router success!")
+func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
+	s.msgHandle.AddRouter(msgId, router)
 }
 
 // NewServer 返回新的服务器
@@ -118,7 +117,7 @@ func NewServer(name string) ziface.IServer {
 		IPVersion: "tcp4",
 		IP:        conf.Host,
 		Port:      conf.TCPPort,
-		Router:    nil,
+		msgHandle: NewMsgHandle(),
 	}
 
 	return s

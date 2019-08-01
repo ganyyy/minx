@@ -23,18 +23,18 @@ type Connection struct {
 	// 退出消息通知chan
 	ExitBuffChan chan bool
 
-	// 处理路由
-	Router ziface.IRouter
+	// 处理路由管理
+	msgHandle ziface.IMsgHandle
 }
 
 // NewConnection 返回一个新的客户端连接结构体
-func NewConnection(conn *net.TCPConn, connID uint32, router ziface.IRouter) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, mh ziface.IMsgHandle) *Connection {
 	c := &Connection{
 		Conn:         conn,
 		ConnID:       connID,
 		isClose:      false,
 		ExitBuffChan: make(chan bool, 1),
-		Router:       router,
+		msgHandle:    mh,
 	}
 	return c
 }
@@ -166,12 +166,8 @@ func (c *Connection) StartReader() {
 			data: msg,
 		}
 
-		// 使用路由处理请求
-		go func(request ziface.IRequest) {
-			c.Router.PreHandle(request)
-			c.Router.Handle(request)
-			c.Router.PostHandle(request)
-		}(&req)
+		// 处理请求
+		go c.msgHandle.DoMsgHandle(&req)
 	}
 
 }
