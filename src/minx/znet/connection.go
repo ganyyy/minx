@@ -1,12 +1,12 @@
 package znet
 
 import (
+	"../utils"
+	"../ziface"
 	"errors"
 	"fmt"
 	"io"
 	"net"
-
-	"../ziface"
 )
 
 //Connection 客户端连接结构
@@ -162,13 +162,19 @@ func (c *Connection) StartRead() {
 		msg.SetData(data)
 
 		// 将当前连接包装成一个Request
-		req := Request{
+		req := &Request{
 			conn: c,
 			data: msg,
 		}
 
-		// 处理请求
-		go c.msgHandle.DoMsgHandle(&req)
+		// 如果存在work pool就交给其来处理, 否则就正常处理
+		if utils.GlobalObject.WorkPoolSize > 0 {
+			c.msgHandle.SendMsgToTaskQueue(req)
+		} else {
+			// 处理请求
+			go c.msgHandle.DoMsgHandle(req)
+		}
+
 	}
 }
 

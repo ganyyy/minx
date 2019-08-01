@@ -10,13 +10,19 @@ import (
 
 // GlobalObj 配置结构
 type GlobalObj struct {
-	TCPServer     ziface.IServer //全局Server对象
-	Host          string         //IP地址
-	TCPPort       int            //IP端口
-	Name          string         //服务器名字
-	Version       string         //服务器版本
-	MaxPacketSize uint32         //单个包的最大字节数
-	MaxConn       int            //当前服务器的最大连接数
+	// server
+	TCPServer ziface.IServer //全局Server对象
+	Host      string         //IP地址
+	TCPPort   int            //IP端口
+	// zinx
+	Name           string //服务器名字
+	Version        string //服务器版本
+	MaxPacketSize  uint32 //单个包的最大字节数
+	MaxConn        int    //当前服务器的最大连接数
+	WorkPoolSize   uint32 //工作线程池的数量
+	MaxWorkTaskLen uint32 //最大的任务存量
+	// other
+	// TODO 配置
 }
 
 // Reload 载入配置文件
@@ -26,7 +32,7 @@ func (g *GlobalObj) Reload() {
 		panic("error root path")
 	}
 	file := "conf/zinx.json"
-	data, err := ioutil.ReadFile(root + "/" +file)
+	data, err := ioutil.ReadFile(root + "/" + file)
 	if err != nil {
 		panic(err)
 	}
@@ -43,12 +49,14 @@ var GlobalObject *GlobalObj
 
 func init() {
 	GlobalObject = &GlobalObj{
-		Name:          "Zinx Main Server",
-		Version:       "V0.4",
-		TCPPort:       7777,
-		Host:          "127.0.0.1",
-		MaxConn:       12000,
-		MaxPacketSize: 4096,
+		Name:           "Zinx Main Server",
+		Version:        "V0.4",
+		TCPPort:        7777,
+		Host:           "127.0.0.1",
+		MaxConn:        12000,
+		MaxPacketSize:  4096,
+		WorkPoolSize:   10,
+		MaxWorkTaskLen: 1024,
 	}
 
 	//GlobalObject.Reload()

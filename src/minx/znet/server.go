@@ -39,6 +39,9 @@ func (s *Server) Start() {
 
 	// 开一个服务去监听
 	go func() {
+		// 启动work池
+		s.msgHandle.StartWorkPool()
+
 		// 1.获取一个监听套接字
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		// 监听失败直接return
