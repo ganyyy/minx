@@ -75,7 +75,7 @@ func init() {
 	dp = &DataPack{}
 }
 
-// NewDatePack 获取一个新的拆封包结构
+// NewDatePack 获取拆封包结构
 func NewDataPack() *DataPack {
 	return dp
 }

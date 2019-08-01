@@ -13,6 +13,7 @@ type PingRouter struct {
 
 func (p *PingRouter) Handle(request ziface.IRequest) {
 	fmt.Println("Call router Handle")
+	fmt.Printf("===> Recv Msg: ID = %d, data = %s\n", request.GetMsgID(), string(request.GetData()))
 	err := request.GetConnection().SendMsg(1, []byte("ping...ping...ping...\n"))
 	if err != nil {
 		fmt.Println("call handle error")
