@@ -21,6 +21,7 @@ type GlobalObj struct {
 	MaxConn        int    //当前服务器的最大连接数
 	WorkPoolSize   uint32 //工作线程池的数量
 	MaxWorkTaskLen uint32 //最大的任务存量
+	MaxMsgChanLen  uint32 //最多的发送消息的缓冲长度
 	// other
 	// TODO 配置
 }
@@ -57,6 +58,7 @@ func init() {
 		MaxPacketSize:  4096,
 		WorkPoolSize:   10,
 		MaxWorkTaskLen: 1024,
+		MaxMsgChanLen:  8192,
 	}
 
 	//GlobalObject.Reload()

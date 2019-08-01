@@ -10,15 +10,6 @@ import (
 	"../ziface"
 )
 
-// Server 服务器基础机构
-type Server struct {
-	Name      string            // 服务器名
-	IPVersion string            // tcp4 or other
-	IP        string            // IP地址
-	Port      int               // 端口号
-	msgHandle ziface.IMsgHandle // 消息处理模块
-}
-
 // CallbackToClient 客户端的HandleAPI
 func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 	fmt.Println("[Conn Handle] CallbackToClient ...")
@@ -27,6 +18,45 @@ func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 		return errors.New("CallBackToClient Error")
 	}
 	return nil
+}
+
+// Server 服务器基础机构
+type Server struct {
+	Name      string              // 服务器名
+	IPVersion string              // tcp4 or other
+	IP        string              // IP地址
+	Port      int                 // 端口号
+	msgHandle ziface.IMsgHandle   // 消息处理模块
+	ConnMgr   ziface.IConnManager // 连接管理
+
+	OnConnStart func(ziface.IConnection) // 连接开始回调
+	OnConnStop  func(ziface.IConnection) // 连接结束回调
+}
+
+func (s *Server) GetConnMgr() ziface.IConnManager {
+	return s.ConnMgr
+}
+
+func (s *Server) SetOnConnStart(call func(ziface.IConnection)) {
+	s.OnConnStart = call
+}
+
+func (s *Server) SetOnConnStop(call func(ziface.IConnection)) {
+	s.OnConnStop = call
+}
+
+func (s *Server) CallOnConnStart(conn ziface.IConnection) {
+	if nil != s.OnConnStart {
+		fmt.Println("---> CallOnConnStart")
+		s.OnConnStart(conn)
+	}
+}
+
+func (s *Server) CallOnConnStop(conn ziface.IConnection) {
+	if nil != s.OnConnStop {
+		fmt.Println("---> CallOnConnStop")
+		s.OnConnStop(conn)
+	}
 }
 
 // Start 开启服务器
@@ -71,11 +101,19 @@ func (s *Server) Start() {
 				continue
 			}
 
-			// 3.2 TODO 最大连接数
+			// 3.2 最大连接数判定
+			if s.ConnMgr.Len() >= utils.GlobalObject.MaxConn {
+				fmt.Println("Warning: Conn over max")
+				err := conn.Close()
+				if err != nil {
+					fmt.Println("Max len close error:", err)
+				}
+				continue
+			}
 			// 3.3 TODO 新链接的业务请求
 
 			// 生成一个新的客户端连接
-			dealConn := NewConnection(conn, cid, s.msgHandle)
+			dealConn := NewConnection(s, conn, cid, s.msgHandle)
 			// id ++, TODO 自定义的连接生成方法
 			cid++
 			// 3.4 启动客户端业务
@@ -89,7 +127,8 @@ func (s *Server) Start() {
 func (s *Server) Stop() {
 	fmt.Println("[STOP] Zinx server :", s.Name, " stop")
 
-	// TODO 关闭后的清理
+	// 清理所有连接
+	s.ConnMgr.RemoveAll()
 }
 
 // Serve 运行服务
@@ -121,6 +160,7 @@ func NewServer(name string) ziface.IServer {
 		IP:        conf.Host,
 		Port:      conf.TCPPort,
 		msgHandle: NewMsgHandle(),
+		ConnMgr:   NewConnManager(),
 	}
 
 	return s

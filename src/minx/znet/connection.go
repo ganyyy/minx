@@ -13,33 +13,36 @@ import (
 type Connection struct {
 	// 套接字
 	Conn *net.TCPConn
-
 	// 连接ID
 	ConnID uint32
-
 	// 是否已关闭
 	isClose bool
-
 	// 退出消息通知chan
 	ExitBuffChan chan bool
-
 	// 处理路由管理
 	msgHandle ziface.IMsgHandle
-
 	// 读写管道, 无缓冲
 	msgChan chan []byte
+	// 带缓冲的管道
+	msgBufChan chan []byte
+	// 服务器的引用
+	TCPServer ziface.IServer
 }
 
 // NewConnection 返回一个新的客户端连接结构体
-func NewConnection(conn *net.TCPConn, connID uint32, mh ziface.IMsgHandle) *Connection {
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, mh ziface.IMsgHandle) *Connection {
 	c := &Connection{
+		TCPServer:    server,
 		Conn:         conn,
 		ConnID:       connID,
 		isClose:      false,
 		ExitBuffChan: make(chan bool, 1),
 		msgHandle:    mh,
 		msgChan:      make(chan []byte),
+		msgBufChan:   make(chan []byte, utils.GlobalObject.MaxPacketSize),
 	}
+	// 将连接添加到管理器中
+	server.GetConnMgr().Add(c)
 	return c
 }
 
@@ -51,7 +54,8 @@ func (c *Connection) Start() {
 	// 开启写业务
 	go c.StartWrite()
 
-	fmt.Println("Conn Start")
+	// 连接开始的回调
+	c.TCPServer.CallOnConnStart(c)
 }
 
 // Stop 停止
@@ -61,7 +65,11 @@ func (c *Connection) Stop() {
 	}
 	c.isClose = true
 
-	// TODO 用户关闭连接的回调处理
+	// 连接结束的回调
+	c.TCPServer.CallOnConnStop(c)
+
+	// 清理服务器的连接管理器
+	c.TCPServer.GetConnMgr().Remove(c)
 
 	err := c.Conn.Close()
 	if err != nil {
@@ -71,6 +79,7 @@ func (c *Connection) Stop() {
 	c.ExitBuffChan <- true
 	// 关闭管道
 	close(c.ExitBuffChan)
+	close(c.msgBufChan)
 }
 
 // GetTCPConnection 获取连接套接字
@@ -110,17 +119,31 @@ func (c *Connection) SendMsg(msgId uint32, data []byte) error {
 	return nil
 }
 
+// SendBuffMsg 带缓冲的发送方式
+func (c *Connection) SendBuffMsg(msgId uint32, data []byte) error {
+	if c.isClose {
+		return errors.New("Connection is close ")
+	}
+	dp := NewDataPack()
+
+	msg, err := dp.Pack(NewMessage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack msg err, id:", msgId)
+		return errors.New("Pack message error ")
+	}
+	c.msgBufChan <- msg
+	return nil
+}
+
 // StartRead 读线程
 func (c *Connection) StartRead() {
-	fmt.Println("Reader Goroutine is running")
-
+	defer fmt.Println(c.RemoteAddr().String(), "[conn reader exit]")
 	// 收尾工作
 	defer func() {
 		err := recover()
 		if err != nil {
 			fmt.Println("conn error:", err)
 		}
-		fmt.Println(c.RemoteAddr().String(), " conn reader exit")
 		c.Stop()
 	}()
 
@@ -180,24 +203,33 @@ func (c *Connection) StartRead() {
 
 // StartWrite 写线程分离
 func (c *Connection) StartWrite() {
+	defer fmt.Println(c.RemoteAddr().String(), "[conn writer exit]")
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println("write error:", err)
 		}
-		fmt.Println("conn write exit")
 		c.Stop()
 	}()
 
 	for {
 		select {
-		case data := <- c.msgChan:
+		case data := <-c.msgChan:
 			if _, err := c.Conn.Write(data); err != nil {
 				fmt.Println("client write err:", err)
 				return
 			}
+		case data, ok := <-c.msgBufChan:
+			if ok {
+				if _, err := c.Conn.Write(data); err != nil {
+					fmt.Println("client write buf err:", err)
+					return
+				}
+			} else {
+				fmt.Println("msgBuffChan is close")
+				break
+			}
 		case <-c.ExitBuffChan:
 			// 已关闭
-			fmt.Println("conn recv write exit sig")
 			return
 		}
 	}
